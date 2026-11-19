@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Electio Analytics — Prédire le vote des communes du Rhône</title>
+<meta name="description" content="Projet MSPR EPSI : un pipeline de données et des modèles de Machine Learning pour prédire la famille politique gagnante dans les communes du Rhône.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23172033'/%3E%3Cpath d='M8 22V10h10M8 16h8M8 22h10' stroke='%23F2B632' stroke-width='3' fill='none' stroke-linecap='round'/%3E%3Ccircle cx='24' cy='22' r='2.4' fill='%23F2B632'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+:root {
+  --bg: #F6F3EC;
+  --bg-alt: #EFEADF;
+  --card: #FFFFFF;
+  --ink: #172033;
+  --ink-2: #4A5468;
+  --ink-3: #7C8496;
+  --line: #DDD6C6;
+  --accent: #B4530F;
+  --accent-soft: #F6E3CC;
+  --hero-bg: #172033;
+  --hero-ink: #F6F3EC;
+  --hero-ink-2: #AEB6C8;
+  --gold: #F2B632;
+
+  --f-centre: #DDAA00;
+  --f-droite: #4488CC;
+  --f-xd: #1A1A6E;
+  --f-gauche: #E8575A;
+
+  --v1: #4488CC;
+  --v2: #E8575A;
+  --v3: #2F9E5B;
+
+  --radius: 14px;
+  --wrap: 1120px;
+  --serif: "Fraunces", Georgia, serif;
+  --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0F1522;
+    --bg-alt: #141C2C;
+    --card: #1A2335;
+    --ink: #ECE8DE;
+    --ink-2: #B3BACA;
+    --ink-3: #7F889B;
+    --line: #2B364C;
+    --accent: #F2B632;
+    --accent-soft: #3A2F14;
+    --hero-bg: #0A0F1A;
+    --f-xd: #7F86F2;
+    --f-centre: #E9BC2B;
+  }
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 72px; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 17px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+img { max-width: 100%; display: block; }
+a { color: var(--accent); }
+.wrap { max-width: var(--wrap); margin: 0 auto; padding: 0 24px; }
+h1, h2, h3 { font-family: var(--serif); line-height: 1.12; margin: 0; text-wrap: balance; }
+h2 { font-size: clamp(1.8rem, 3.6vw, 2.6rem); font-weight: 600; letter-spacing: -0.01em; }
+h3 { font-size: 1.2rem; font-weight: 600; }
+p { margin: 0; text-wrap: pretty; }
+.num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+/* ── Nav ── */
+.nav {
+  position: sticky; top: 0; z-index: 20;
+  background: color-mix(in srgb, var(--hero-bg) 92%, transparent);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
+.nav .wrap { display: flex; align-items: center; gap: 24px; height: 60px; }
+.brand { font-family: var(--serif); font-weight: 700; font-size: 1.1rem; color: var(--hero-ink); text-decoration: none; white-space: nowrap; }
+.brand span { color: var(--gold); }
+.nav-links { display: flex; gap: 4px; margin-left: auto; overflow-x: auto; scrollbar-width: none; }
+.nav-links::-webkit-scrollbar { display: none; }
+.nav-links a {
+  color: var(--hero-ink-2); text-decoration: none; font-size: .9rem; font-weight: 500;
+  padding: 6px 12px; border-radius: 999px; white-space: nowrap; transition: color .15s, background .15s;
+}
+.nav-links a:hover, .nav-links a.active { color: var(--hero-ink); background: rgba(255,255,255,.09); }
+.nav-cta {
+  background: var(--gold); color: #172033 !important; font-weight: 600 !important;
+}
+.nav-cta:hover { background: #FFCB55 !important; }
+
+/* ── Hero ── */
+.hero { background: var(--hero-bg); color: var(--hero-ink); padding: 84px 0 0; position: relative; overflow: hidden; }
+.hero::before {
+  content: ""; position: absolute; inset: 0;
+  background-image: radial-gradient(rgba(255,255,255,.07) 1px, transparent 1px);
+  background-size: 22px 22px;
+  mask-image: linear-gradient(to bottom, #000, transparent 85%);
+  pointer-events: none;
+}
+.hero .wrap { position: relative; }
+.eyebrow {
+  font-family: var(--mono); font-size: .78rem; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--accent); margin-bottom: 14px;
+}
+.hero .eyebrow { color: var(--gold); }
+.hero h1 { font-size: clamp(2.4rem, 6.4vw, 4.6rem); font-weight: 600; letter-spacing: -0.02em; max-width: 15ch; }
+.hero h1 em { font-style: italic; color: var(--gold); font-weight: 400; }
+.hero .lead { color: var(--hero-ink-2); font-size: 1.15rem; max-width: 58ch; margin-top: 22px; }
+.hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 32px; }
+.btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 12px 22px; border-radius: 999px; font-weight: 600; font-size: .98rem;
+  text-decoration: none; transition: transform .15s, background .15s, border-color .15s;
+}
+.btn:hover { transform: translateY(-1px); }
+.btn-primary { background: var(--gold); color: #172033; }
+.btn-primary:hover { background: #FFCB55; }
+.btn-ghost { color: var(--hero-ink); border: 1px solid rgba(255,255,255,.25); }
+.btn-ghost:hover { border-color: rgba(255,255,255,.6); }
+
+.kpis {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  margin-top: 64px; border-top: 1px solid rgba(255,255,255,.14);
+}
+.kpi { padding: 26px 20px 34px 0; }
+.kpi + .kpi { padding-left: 24px; border-left: 1px solid rgba(255,255,255,.14); }
+.kpi-val { font-family: var(--serif); font-size: clamp(2rem, 4vw, 3rem); font-weight: 600; line-height: 1; }
+.kpi-val small { font-size: .5em; color: var(--gold); font-weight: 400; }
+.kpi-lab { color: var(--hero-ink-2); font-size: .9rem; margin-top: 8px; }
+
+/* ── Sections ── */
+section { padding: 88px 0; }
+section.alt { background: var(--bg-alt); }
+.sec-head { max-width: 720px; margin-bottom: 40px; }
+.sec-head p { color: var(--ink-2); margin-top: 14px; font-size: 1.05rem; }
+
+.card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 26px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+.grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
+.card h3 { margin-bottom: 8px; }
+.card p { color: var(--ink-2); font-size: .96rem; }
+.card .tag { font-family: var(--mono); font-size: .75rem; color: var(--accent); letter-spacing: .08em; text-transform: uppercase; margin-bottom: 12px; display: block; }
+
+/* ── Sources table ── */
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--card); }
+table { border-collapse: collapse; width: 100%; font-size: .95rem; }
+th, td { padding: 14px 18px; text-align: left; border-bottom: 1px solid var(--line); }
+tr:last-child td { border-bottom: 0; }
+th { font-family: var(--mono); font-size: .74rem; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); font-weight: 500; }
+td.r, th.r { text-align: right; }
+td strong { font-weight: 600; }
+tr.best td { background: var(--accent-soft); }
+
+/* ── Pipeline ── */
+.pipe { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; counter-reset: step; margin-bottom: 28px; }
+.pipe-step { position: relative; padding: 24px 22px 24px 0; border-top: 3px solid var(--ink); }
+.pipe-step + .pipe-step { padding-left: 22px; }
+.pipe-step::before {
+  counter-increment: step; content: "0" counter(step);
+  font-family: var(--mono); font-size: .8rem; color: var(--accent);
+}
+.pipe-step code { display: block; font-family: var(--mono); font-size: 1.05rem; font-weight: 500; margin: 6px 0 8px; }
+.pipe-step p { color: var(--ink-2); font-size: .93rem; }
+.figure { background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; cursor: zoom-in; }
+.figure img { margin: 0 auto; border-radius: 6px; }
+figure { margin: 0; }
+figcaption { color: var(--ink-3); font-size: .86rem; margin-top: 10px; }
+.figure.tall { max-height: 520px; overflow: hidden; position: relative; }
+.figure.tall::after {
+  content: "Cliquer pour agrandir"; position: absolute; left: 0; right: 0; bottom: 0;
+  padding: 60px 0 16px; text-align: center; font-size: .85rem; font-weight: 600; color: #172033;
+  background: linear-gradient(to bottom, rgba(255,255,255,0), #fff 70%);
+}
+
+/* ── Stacked chart ── */
+.legend { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 20px; font-size: .9rem; color: var(--ink-2); }
+.legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 7px; vertical-align: -1px; }
+.srow { display: grid; grid-template-columns: 170px 1fr; gap: 16px; align-items: center; padding: 9px 0; }
+.srow-lab { font-weight: 600; font-size: .95rem; }
+.srow-lab small { display: block; font-weight: 400; color: var(--ink-3); font-size: .8rem; }
+.sbar { display: flex; height: 38px; border-radius: 8px; overflow: hidden; gap: 2px; }
+.sbar span {
+  display: flex; align-items: center; justify-content: center; min-width: 0;
+  color: #fff; font-family: var(--mono); font-size: .8rem; font-weight: 500;
+  width: 0; transition: width .9s cubic-bezier(.2,.7,.2,1);
+}
+.sbar span.dark-text { color: #172033; }
+.note { color: var(--ink-3); font-size: .88rem; margin-top: 18px; }
+
+/* ── Model ── */
+.tabs { display: inline-flex; background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 4px; margin-bottom: 22px; flex-wrap: wrap; }
+.tabs button {
+  font: inherit; font-size: .9rem; font-weight: 500; border: 0; background: none; color: var(--ink-2);
+  padding: 8px 16px; border-radius: 999px; cursor: pointer;
+}
+.tabs button[aria-selected="true"] { background: var(--ink); color: var(--bg); }
+.mrow { display: grid; grid-template-columns: 170px 1fr 64px; gap: 14px; align-items: center; padding: 10px 0; }
+.mrow-lab { font-weight: 600; font-size: .95rem; }
+.mtrack { height: 14px; background: var(--bg-alt); border-radius: 999px; position: relative; overflow: visible; }
+.mfill { height: 100%; border-radius: 999px; background: var(--ink-3); width: 0; transition: width .7s cubic-bezier(.2,.7,.2,1); }
+.mrow.best .mfill { background: var(--v3); }
+.mbase { position: absolute; top: -5px; bottom: -5px; width: 2px; background: var(--accent); }
+.mval { text-align: right; font-family: var(--mono); font-size: .92rem; }
+.model-meta { display: flex; flex-wrap: wrap; gap: 8px 22px; color: var(--ink-2); font-size: .9rem; margin-bottom: 14px; }
+.model-meta b { color: var(--ink); font-family: var(--mono); font-weight: 500; }
+.callout { border-left: 3px solid var(--accent); background: var(--accent-soft); padding: 16px 20px; border-radius: 0 10px 10px 0; font-size: .95rem; color: var(--ink); }
+
+/* ── Projection ── */
+.proj { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+.proj-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 24px; border-top: 5px solid var(--c); }
+.proj-card .big { font-family: var(--serif); font-size: 3rem; font-weight: 600; line-height: 1; margin: 10px 0 4px; }
+.proj-card .sub { color: var(--ink-2); font-size: .92rem; }
+.proj-card .delta { font-family: var(--mono); font-size: .85rem; color: var(--ink-3); margin-top: 10px; }
+
+/* ── Gallery ── */
+.filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 22px; }
+.filters button {
+  font: inherit; font-size: .88rem; font-weight: 500; cursor: pointer;
+  border: 1px solid var(--line); background: var(--card); color: var(--ink-2);
+  padding: 7px 15px; border-radius: 999px;
+}
+.filters button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.gallery { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.g-item { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; cursor: zoom-in; padding: 0; text-align: left; font: inherit; color: inherit; transition: transform .15s, box-shadow .15s; }
+.g-item:hover { transform: translateY(-3px); box-shadow: 0 10px 26px rgba(23,32,51,.12); }
+.g-item .thumb { background: #fff; aspect-ratio: 16/10; display: flex; align-items: center; justify-content: center; padding: 10px; }
+.g-item .thumb img { max-height: 100%; object-fit: contain; }
+.g-item .cap { padding: 12px 16px 14px; border-top: 1px solid var(--line); }
+.g-item .cap b { display: block; font-size: .95rem; font-weight: 600; }
+.g-item .cap span { font-family: var(--mono); font-size: .72rem; color: var(--accent); text-transform: uppercase; letter-spacing: .08em; }
+.g-item[hidden] { display: none; }
+
+dialog.lightbox { border: 0; padding: 0; background: transparent; max-width: 96vw; max-height: 94vh; }
+dialog.lightbox::backdrop { background: rgba(8,12,20,.86); }
+.lb-inner { background: #fff; border-radius: 12px; padding: 14px; }
+.lb-inner img { max-width: calc(96vw - 28px); max-height: calc(94vh - 80px); width: auto; }
+.lb-bar { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding-top: 10px; color: #172033; font-size: .92rem; font-weight: 600; }
+.lb-bar button { font: inherit; border: 1px solid #ccc; background: #fff; color: #172033; border-radius: 999px; padding: 5px 14px; cursor: pointer; }
+
+/* ── Limits / Team ── */
+.limits { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
+.limits li { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px 24px; }
+.limits b { display: block; font-family: var(--serif); font-size: 1.08rem; margin-bottom: 6px; }
+.limits span { color: var(--ink-2); font-size: .95rem; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.chip { font-family: var(--mono); font-size: .8rem; padding: 6px 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--card); color: var(--ink-2); }
+.role { display: flex; gap: 14px; align-items: flex-start; }
+.role .ico { flex: none; width: 42px; height: 42px; border-radius: 10px; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; font-family: var(--mono); font-weight: 500; font-size: .85rem; }
+
+/* ── CTA / Footer ── */
+.cta { background: var(--hero-bg); color: var(--hero-ink); text-align: center; padding: 80px 0; }
+.cta h2 { max-width: 20ch; margin: 0 auto; }
+.cta p { color: var(--hero-ink-2); max-width: 54ch; margin: 16px auto 28px; }
+footer { background: var(--hero-bg); color: var(--hero-ink-2); border-top: 1px solid rgba(255,255,255,.1); padding: 26px 0; font-size: .86rem; }
+footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; }
+
+.reveal { opacity: 0; transform: translateY(18px); transition: opacity .6s, transform .6s; }
+.reveal.in { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) {
+  .reveal { opacity: 1; transform: none; transition: none; }
+  .sbar span, .mfill { transition: none; }
+  html { scroll-behavior: auto; }
+}
+
+@media (max-width: 900px) {
+  .grid-3, .gallery, .proj { grid-template-columns: repeat(2, 1fr); }
+  .pipe { grid-template-columns: repeat(2, 1fr); row-gap: 20px; }
+  .pipe-step:nth-child(3) { padding-left: 0; }
+  .kpis { grid-template-columns: repeat(2, 1fr); }
+  .kpi:nth-child(3) { padding-left: 0; border-left: 0; }
+  .kpi:nth-child(n+3) { border-top: 1px solid rgba(255,255,255,.14); }
+}
+@media (max-width: 640px) {
+  body { font-size: 16px; }
+  .wrap { padding: 0 16px; }
+  section { padding: 60px 0; }
+  .hero { padding-top: 56px; }
+  .grid-3, .grid-2, .gallery, .proj, .limits { grid-template-columns: 1fr; }
+  .pipe { grid-template-columns: 1fr; }
+  .pipe-step + .pipe-step { padding-left: 0; }
+  .srow { grid-template-columns: 1fr; gap: 6px; }
+  .mrow { grid-template-columns: 1fr 56px; }
+  .mrow-lab { grid-column: 1 / -1; }
+  .nav-links a:not(.nav-cta) { display: none; }
+}
+</style>
+</head>
+<body>
+
+<nav class="nav" aria-label="Navigation principale">
+  <div class="wrap">
+    <a class="brand" href="#top">Electio<span>·</span>Analytics</a>
+    <div class="nav-links">
+      <a href="#projet">Projet</a>
+      <a href="#donnees">Données</a>
+      <a href="#pipeline">Pipeline</a>
+      <a href="#paysage">Paysage électoral</a>
+      <a href="#modeles">Modèles</a>
+      <a href="#projection">2027</a>
+      <a href="#galerie">Galerie</a>
+      <a href="#equipe">Équipe</a>
+      <a class="nav-cta" href="electio-analytics.html">Ouvrir l'application</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero" id="top">
+  <div class="wrap">
+    <div class="eyebrow">MSPR · EPSI — Big Data &amp; Machine Learning</div>
+    <h1>Prédire le vote des communes du <em>Rhône</em></h1>
+    <p class="lead">Electio Analytics croise huit scrutins et les indicateurs socio-économiques de l'INSEE pour anticiper la famille politique qui arrive en tête dans chaque commune du département.</p>
+    <div class="hero-actions">
+      <a class="btn btn-primary" href="electio-analytics.html">Explorer l'application →</a>
+      <a class="btn btn-ghost" href="#modeles">Voir les résultats</a>
+    </div>
+    <div class="kpis">
+      <div class="kpi"><div class="kpi-val num" data-count="280">280</div><div class="kpi-lab">communes du Rhône analysées</div></div>
+      <div class="kpi"><div class="kpi-val num" data-count="8">8</div><div class="kpi-lab">scrutins collectés, de 2014 à 2024</div></div>
+      <div class="kpi"><div class="kpi-val num" data-count="1360">1 360</div><div class="kpi-lab">observations × 40 variables dans le jeu final</div></div>
+      <div class="kpi"><div class="kpi-val num"><span data-count="87">87</span><small> %</small></div><div class="kpi-lab">d'exactitude du meilleur modèle sur le jeu de test</div></div>
+    </div>
+  </div>
+</header>
+
+<main>
+
+<section id="projet">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="eyebrow">Le projet</div>
+      <h2>Peut-on lire un résultat électoral dans les données d'un territoire ?</h2>
+      <p>Le projet part d'une hypothèse simple : le revenu, l'emploi, la démographie ou la sécurité d'une commune laissent une empreinte sur son vote. Nous avons construit la chaîne complète pour le vérifier, de la donnée brute à la projection.</p>
+    </div>
+    <div class="grid-3">
+      <div class="card reveal">
+        <span class="tag">Objectif</span>
+        <h3>Prédire la famille gagnante</h3>
+        <p>Pour chaque commune, le modèle désigne la famille politique en tête au premier tour : Centre, Droite, Extrême droite ou Gauche.</p>
+      </div>
+      <div class="card reveal">
+        <span class="tag">Périmètre</span>
+        <h3>Le département du Rhône (69)</h3>
+        <p>280 communes et 1,9 million d'habitants, de la métropole de Lyon aux villages du Beaujolais : un territoire contrasté, urbain et rural.</p>
+      </div>
+      <div class="card reveal">
+        <span class="tag">Méthode</span>
+        <h3>L'approche « delta »</h3>
+        <p>Plutôt qu'une photo figée, on mesure l'évolution des indicateurs entre 2017 et 2022 pour capter la dynamique de chaque territoire.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="donnees" class="alt">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="eyebrow">Les données</div>
+      <h2>Des sources publiques, ramenées à l'échelle de la commune</h2>
+      <p>Les résultats électoraux bruts représentent plus de 30 millions de lignes à l'échelle nationale. Ils sont filtrés sur le Rhône, puis agrégés du bureau de vote à la commune.</p>
+    </div>
+    <div class="table-wrap reveal">
+      <table>
+        <thead><tr><th>Source</th><th>Contenu</th><th>Millésimes</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Ministère de l'Intérieur</strong></td><td>Résultats par bureau de vote : présidentielles, législatives, européennes</td><td class="num">2014 → 2024</td></tr>
+          <tr><td><strong>INSEE — Recensement</strong></td><td>Population, logements, emploi et chômage, immigration</td><td class="num">2017, 2022</td></tr>
+          <tr><td><strong>INSEE — Filosofi</strong></td><td>Revenu médian, taux de pauvreté, déciles et rapport interdécile</td><td class="num">2017, 2021</td></tr>
+          <tr><td><strong>SSMSI</strong></td><td>Délinquance enregistrée par commune (14 fichiers)</td><td class="num">2017 → 2022</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="grid-3" style="margin-top:18px">
+      <div class="card reveal"><span class="tag">Revenu médian</span><h3 class="num">25 635 €</h3><p>Médiane des communes (Filosofi 2021), de 16 880 € à 42 270 € selon la commune.</p></div>
+      <div class="card reveal"><span class="tag">Chômage</span><h3 class="num">6,2 %</h3><p>Taux médian des communes au recensement 2022, de 1,9 % à 19,8 %.</p></div>
+      <div class="card reveal"><span class="tag">Familles politiques</span><h3>Des nuances aux familles</h3><p>Les dizaines de nuances officielles sont regroupées en grandes familles pour rendre les scrutins comparables entre eux.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="pipeline">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="eyebrow">Le pipeline</div>
+      <h2>De la donnée brute au jeu d'entraînement, en quatre étapes</h2>
+      <p>Le traitement est entièrement automatisé dans <code class="num">pipeline.py</code> et documenté pas à pas dans les notebooks.</p>
+    </div>
+    <div class="pipe reveal">
+      <div class="pipe-step"><code>01_raw</code><p>Fichiers officiels tels que téléchargés : CSV, Excel, Parquet.</p></div>
+      <div class="pipe-step"><code>02_staging</code><p>Filtrage sur le Rhône, nettoyage, mapping des nuances, agrégation par commune.</p></div>
+      <div class="pipe-step"><code>03_processed</code><p>Jointure électoral × socio-économique, imputation, calcul des deltas : le <em>master ML</em>.</p></div>
+      <div class="pipe-step"><code>04_outputs</code><p>Modèles entraînés, graphiques d'analyse et projections.</p></div>
+    </div>
+    <div class="grid-2">
+      <figure class="reveal">
+        <div class="figure tall" data-zoom="out/scripts/flux_ETL/flux_ETL.png" data-title="Diagramme de flux ETL">
+          <img src="out/scripts/flux_ETL/flux_ETL.png" alt="Diagramme de flux ETL : des fichiers sources au master ML" loading="lazy">
+        </div>
+        <figcaption>Flux ETL : deux branches (électorale et socio-économique) qui se rejoignent dans le master.</figcaption>
+      </figure>
+      <figure class="reveal">
+        <div class="figure tall" data-zoom="out/scripts/MCD/MCD_Electio_Analytics.png" data-title="Modèle conceptuel de données">
+          <img src="out/scripts/MCD/MCD_Electio_Analytics.png" alt="Modèle conceptuel de données du projet" loading="lazy">
+        </div>
+        <figcaption>Modèle conceptuel de données de la base SQLite du projet.</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<section id="paysage" class="alt">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="eyebrow">Le paysage électoral</div>
+      <h2>En sept ans, la carte du Rhône a changé de couleur</h2>
+      <p>Nombre de communes où chaque famille arrive en tête au premier tour. En 2017, le Centre dominait les législatives ; en 2024, l'Extrême droite est première dans 7 communes sur 10.</p>
+    </div>
+    <div class="card reveal">
+      <div class="legend">
+        <span><i style="background:var(--f-centre)"></i>Centre</span>
+        <span><i style="background:var(--f-droite)"></i>Droite</span>
+        <span><i style="background:var(--f-xd)"></i>Extrême droite</span>
+        <span><i style="background:var(--f-gauche)"></i>Gauche</span>
+      </div>
+      <div id="stack"></div>
+      <p class="note">Source : <span class="num">03_processed/master_ml.csv</span>. La gauche radicale est regroupée avec la Gauche. Le nombre de communes varie (280 puis 266–267) à cause des fusions de communes et du secret statistique.</p>
+    </div>
+  </div>
+</section>
+
+<section id="modeles">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="eyebrow">La modélisation</div>
+      <h2>Quatre algorithmes, trois jeux de variables</h2>
+      <p>Les modèles apprennent à retrouver la famille gagnante des législatives 2024 dans 266 communes : 212 pour l'entraînement, 54 gardées de côté pour le test.</p>
+    </div>
+    <div class="card reveal">
+      <div class="tabs" role="tablist" aria-label="Jeu de variables">
+        <button role="tab" data-v="v3" aria-selected="true">Master + deltas</button>
+        <button role="tab" data-v="v1" aria-selected="false">Master complet</button>
+        <button role="tab" data-v="v2" aria-selected="false">Deltas seuls</button>
+      </div>
+      <div class="model-meta" id="model-meta"></div>
+      <div id="model-rows"></div>
+      <p class="note">Barres : exactitude (accuracy) sur les 54 communes de test. Le trait vertical marque 70 %, le score obtenu en répondant toujours « Extrême droite ».</p>
+      <div class="table-wrap" style="margin-top:22px">
+        <table>
+          <thead><tr><th>Modèle</th><th class="r">Accuracy</th><th class="r">F1 pondéré</th><th class="r">Validation croisée</th></tr></thead>
+          <tbody id="model-table"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="grid-2" style="margin-top:18px">
+      <div class="card reveal">
+        <span class="tag">Meilleur modèle</span>
+        <h3>Régression logistique, master + deltas</h3>
+        <p>47 communes sur 54 correctement classées (87 %), soit 17 points de mieux que la réponse majoritaire. Ajouter les deltas aux variables de base améliore trois des quatre modèles.</p>
+      </div>
+      <div class="card reveal">
+        <span class="tag">Ce que les deltas apportent</span>
+        <h3>Utiles en complément, insuffisants seuls</h3>
+        <p>Avec les 12 variables d'évolution seules, le meilleur score tombe à 78 %. La dynamique d'un territoire informe, mais ne remplace pas son profil ni son historique de vote.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="projection" class="alt">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="eyebrow">Projection</div>
+      <h2>Présidentielle 2027 : le Centre resterait en tête dans le Rhône</h2>
+      <p>Un second modèle, entraîné sur la présidentielle 2022 (89 % d'exactitude en test), projette la famille en tête dans chacune des 267 communes.</p>
+    </div>
+    <div class="proj">
+      <div class="proj-card reveal" style="--c:var(--f-centre)"><span class="tag" style="font-family:var(--mono);font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)">Centre</span><div class="big num">189</div><div class="sub">communes · 70,8 %</div><div class="delta">186 en 2022 → +3</div></div>
+      <div class="proj-card reveal" style="--c:var(--f-xd)"><span class="tag" style="font-family:var(--mono);font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)">Extrême droite</span><div class="big num">64</div><div class="sub">communes · 24,0 %</div><div class="delta">66 en 2022 → −2</div></div>
+      <div class="proj-card reveal" style="--c:var(--f-gauche)"><span class="tag" style="font-family:var(--mono);font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)">Gauche</span><div class="big num">14</div><div class="sub">communes · 5,2 %</div><div class="delta">15 en 2022 → −1</div></div>
+    </div>
+    <p class="callout reveal" style="margin-top:22px">Projection indicative : elle prolonge les données socio-économiques 2017–2022 et les derniers signaux électoraux. Elle ne tient compte ni des candidats, ni de la campagne, ni des événements à venir.</p>
+  </div>
+</section>
+
+<section id="galerie">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="eyebrow">Galerie</div>
+      <h2>Les analyses en images</h2>
+      <p>Une sélection des graphiques produits par les notebooks. Cliquer sur une image pour l'agrandir.</p>
+    </div>
+    <div class="filters" id="filters">
+      <button aria-pressed="true" data-f="all">Tout</button>
+      <button aria-pressed="false" data-f="etl">ETL</button>
+      <button aria-pressed="false" data-f="electoral">Électoral</button>
+      <button aria-pressed="false" data-f="ml">Machine Learning</button>
+    </div>
+    <div class="gallery" id="gallery"></div>
+  </div>
+</section>
+
+<section id="limites" class="alt">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="eyebrow">Limites</div>
+      <h2>Ce que ces résultats ne disent pas</h2>
+      <p>Un modèle électoral se juge aussi à la clarté de ses limites.</p>
+    </div>
+    <ul class="limits">
+      <li class="reveal"><b>Des classes très déséquilibrées</b><span>En 2024, l'Extrême droite gagne 187 communes sur 266, la Droite seulement 12. Aucun modèle ne reconnaît correctement les communes de Droite du jeu de test.</span></li>
+      <li class="reveal"><b>Un jeu de test réduit</b><span>54 communes : chaque erreur pèse près de 2 points d'exactitude. Les écarts entre modèles sont à lire avec prudence.</span></li>
+      <li class="reveal"><b>Un test dans la même élection</b><span>Entraînement et test sont tirés au hasard dans le scrutin de 2024. Prédire une élection future à partir des précédentes est plus difficile : un essai enregistré dans <span class="num">bilan_modeles.csv</span> plafonne à 59 %.</span></li>
+      <li class="reveal"><b>La commune, pas l'électeur</b><span>Le modèle prédit qui arrive en tête, pas les scores. Une commune de 300 habitants compte autant que Lyon : ce n'est pas une estimation en voix.</span></li>
+    </ul>
+  </div>
+</section>
+
+<section id="equipe">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="eyebrow">L'équipe</div>
+      <h2>Un projet mené à quatre</h2>
+      <p>Réalisé dans le cadre de la MSPR (Mise en Situation Professionnelle Reconstituée) à l'EPSI.</p>
+    </div>
+    <div class="grid-2">
+      <div class="card reveal role"><div class="ico">PM</div><div><h3>Product Manager</h3><p>Cadrage fonctionnel et priorisation.</p></div></div>
+      <div class="card reveal role"><div class="ico">DA</div><div><h3>Data Analyst</h3><p>Exploration et analyse des données.</p></div></div>
+      <div class="card reveal role"><div class="ico">DS</div><div><h3>Data Scientist</h3><p>Feature engineering et modélisation.</p></div></div>
+      <div class="card reveal role"><div class="ico">DE</div><div><h3>Data Engineer</h3><p>Pipeline de données et infrastructure.</p></div></div>
+    </div>
+    <div class="chips reveal">
+      <span class="chip">Python</span><span class="chip">pandas</span><span class="chip">scikit-learn</span><span class="chip">imbalanced-learn</span><span class="chip">SQLite</span><span class="chip">Jupyter</span><span class="chip">matplotlib</span><span class="chip">seaborn</span><span class="chip">Streamlit</span><span class="chip">React</span>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<div class="cta">
+  <div class="wrap">
+    <h2>Explorer les données commune par commune</h2>
+    <p>L'application interactive permet de rechercher une commune, de comparer les scrutins et de consulter les projections.</p>
+    <a class="btn btn-primary" href="electio-analytics.html">Ouvrir l'application →</a>
+  </div>
+</div>
+
+<footer>
+  <div class="wrap">
+    <span>Electio Analytics — MSPR EPSI · Département du Rhône (69)</span>
+    <span>Données : Ministère de l'Intérieur, INSEE, SSMSI</span>
+  </div>
+</footer>
+
+<dialog class="lightbox" id="lightbox">
+  <div class="lb-inner">
+    <img id="lb-img" src="" alt="">
+    <div class="lb-bar"><span id="lb-title"></span><button id="lb-close">Fermer</button></div>
+  </div>
+</dialog>
+
+<script>
+(function () {
+  "use strict";
+  var $ = function (s) { return document.querySelector(s); };
+
+  /* ── Familles gagnantes par scrutin (master_ml.csv) ── */
+  var FAM = [
+    { k: "centre", label: "Centre", color: "var(--f-centre)", dark: true },
+    { k: "droite", label: "Droite", color: "var(--f-droite)" },
+    { k: "xd", label: "Extrême droite", color: "var(--f-xd)" },
+    { k: "gauche", label: "Gauche", color: "var(--f-gauche)" }
+  ];
+  var ELECTIONS = [
+    { lab: "Présidentielle 2017", n: 280, centre: 72, droite: 95, xd: 103, gauche: 10 },
+    { lab: "Législatives 2017", n: 280, centre: 199, droite: 80, xd: 1, gauche: 0 },
+    { lab: "Présidentielle 2022", n: 267, centre: 186, droite: 0, xd: 66, gauche: 15 },
+    { lab: "Législatives 2022", n: 267, centre: 150, droite: 74, xd: 17, gauche: 26 },
+    { lab: "Législatives 2024", n: 266, centre: 41, droite: 12, xd: 187, gauche: 26 }
+  ];
+  var stack = $("#stack");
+  ELECTIONS.forEach(function (e) {
+    var row = document.createElement("div");
+    row.className = "srow";
+    var bars = FAM.filter(function (f) { return e[f.k] > 0; }).map(function (f) {
+      var pct = e[f.k] / e.n * 100;
+      return '<span class="' + (f.dark ? "dark-text" : "") + '" style="background:' + f.color + '" data-w="' + pct.toFixed(2) +
+        '" title="' + f.label + " : " + e[f.k] + " communes (" + pct.toFixed(0) + ' %)">' + (pct >= 7 ? e[f.k] : "") + "</span>";
+    }).join("");
+    row.innerHTML = '<div class="srow-lab">' + e.lab + "<small>" + e.n + ' communes · 1er tour</small></div><div class="sbar" role="img" aria-label="' +
+      e.lab + " : " + FAM.map(function (f) { return f.label + " " + e[f.k]; }).join(", ") + '">' + bars + "</div>";
+    stack.appendChild(row);
+  });
+
+  /* ── Modèles (notebook 05_machineLearning) ── */
+  var VERSIONS = {
+    v1: { feats: 142, desc: "Variables électorales et socio-économiques", rows: [
+      ["Régression logistique", 0.8519, 0.8230, 0.8319],
+      ["Random Forest", 0.8333, 0.8007, 0.8602],
+      ["Gradient Boosting", 0.7963, 0.7678, 0.8623],
+      ["KNN", 0.7778, 0.7495, 0.8521]] },
+    v2: { feats: 12, desc: "Évolutions 2017 → 2022 uniquement", rows: [
+      ["Régression logistique", 0.7778, 0.7307, 0.7536],
+      ["Gradient Boosting", 0.7037, 0.6164, 0.7527],
+      ["Random Forest", 0.6667, 0.6255, 0.7231],
+      ["KNN", 0.6481, 0.5927, 0.7237]] },
+    v3: { feats: 154, desc: "Toutes les variables + les évolutions", rows: [
+      ["Régression logistique", 0.8704, 0.8408, 0.8288],
+      ["Gradient Boosting", 0.8519, 0.8166, 0.8586],
+      ["Random Forest", 0.8333, 0.8007, 0.8502],
+      ["KNN", 0.8333, 0.7961, 0.8328]] }
+  };
+  var fr = function (x) { return x.toFixed(3).replace(".", ","); };
+  function renderModels(v) {
+    var d = VERSIONS[v];
+    $("#model-meta").innerHTML = "<span>" + d.desc + "</span><span><b>" + d.feats + "</b> variables</span><span><b>212</b> communes d'entraînement</span><span><b>54</b> de test</span>";
+    $("#model-rows").innerHTML = d.rows.map(function (r, i) {
+      return '<div class="mrow' + (i === 0 ? " best" : "") + '"><div class="mrow-lab">' + r[0] +
+        '</div><div class="mtrack"><div class="mfill" data-w="' + (r[1] * 100).toFixed(1) + '"></div><div class="mbase" style="left:70.4%"></div></div><div class="mval">' +
+        (r[1] * 100).toFixed(1).replace(".", ",") + " %</div></div>";
+    }).join("");
+    $("#model-table").innerHTML = d.rows.map(function (r, i) {
+      return "<tr" + (i === 0 ? ' class="best"' : "") + "><td><strong>" + r[0] + '</strong></td><td class="r num">' + fr(r[1]) +
+        '</td><td class="r num">' + fr(r[2]) + '</td><td class="r num">' + fr(r[3]) + "</td></tr>";
+    }).join("");
+    requestAnimationFrame(function () { requestAnimationFrame(function () {
+      document.querySelectorAll("#model-rows .mfill").forEach(function (el) { el.style.width = el.dataset.w + "%"; });
+    }); });
+  }
+  renderModels("v3");
+  document.querySelectorAll(".tabs button").forEach(function (b) {
+    b.addEventListener("click", function () {
+      document.querySelectorAll(".tabs button").forEach(function (x) { x.setAttribute("aria-selected", x === b); });
+      renderModels(b.dataset.v);
+    });
+  });
+
+  /* ── Galerie ── */
+  var CAT = { etl: "ETL", electoral: "Électoral", ml: "Machine Learning" };
+  var IMAGES = [
+    ["electoral", "04_outputs/electoral/elec2_familles_gagnantes.png", "Familles gagnantes par scrutin"],
+    ["electoral", "04_outputs/electoral/elec1_participation.png", "Participation"],
+    ["ml", "04_outputs/ml/ml_comparaison_3_versions.png", "Comparaison des trois jeux de variables"],
+    ["ml", "04_outputs/ml/ml_confusion_matrices.png", "Matrices de confusion"],
+    ["electoral", "04_outputs/electoral/elec5_heatmap_correlations.png", "Corrélations entre indicateurs"],
+    ["ml", "04_outputs/ml/ml_feature_importance.png", "Importance des variables"],
+    ["etl", "04_outputs/etl/etl1_volumetrie.png", "Volumétrie des données"],
+    ["etl", "04_outputs/etl/etl2_mapping_nuances.png", "Mapping des nuances politiques"],
+    ["electoral", "04_outputs/electoral/elec4_revenu_famille.png", "Revenu et famille gagnante"],
+    ["ml", "04_outputs/ml/ml_f1_par_classe.png", "Score F1 par famille"],
+    ["ml", "04_outputs/ml/ml_learning_curves.png", "Courbes d'apprentissage"],
+    ["etl", "04_outputs/etl/etl3_couverture_jointures.png", "Couverture des jointures"],
+    ["electoral", "04_outputs/eda/eda2_desequilibre_classes.png", "Déséquilibre des classes"],
+    ["ml", "04_outputs/ml/ml_reel_vs_predit_2024.png", "Réel et prédit, législatives 2024"],
+    ["ml", "04_outputs/ml/ml_projection_pres_2027_final.png", "Projection présidentielle 2027"]
+  ];
+  var gallery = $("#gallery");
+  IMAGES.forEach(function (im) {
+    var b = document.createElement("button");
+    b.className = "g-item";
+    b.dataset.cat = im[0];
+    b.dataset.zoom = im[1];
+    b.dataset.title = im[2];
+    b.innerHTML = '<div class="thumb"><img src="' + im[1] + '" alt="' + im[2] + '" loading="lazy"></div><div class="cap"><span>' + CAT[im[0]] + "</span><b>" + im[2] + "</b></div>";
+    gallery.appendChild(b);
+  });
+  $("#filters").addEventListener("click", function (e) {
+    var b = e.target.closest("button");
+    if (!b) return;
+    document.querySelectorAll("#filters button").forEach(function (x) { x.setAttribute("aria-pressed", x === b); });
+    document.querySelectorAll(".g-item").forEach(function (it) { it.hidden = b.dataset.f !== "all" && it.dataset.cat !== b.dataset.f; });
+  });
+
+  /* ── Lightbox ── */
+  var lb = $("#lightbox");
+  document.addEventListener("click", function (e) {
+    var t = e.target.closest("[data-zoom]");
+    if (!t) return;
+    $("#lb-img").src = t.dataset.zoom;
+    $("#lb-img").alt = t.dataset.title;
+    $("#lb-title").textContent = t.dataset.title;
+    lb.showModal();
+  });
+  $("#lb-close").addEventListener("click", function () { lb.close(); });
+  lb.addEventListener("click", function (e) { if (e.target === lb) lb.close(); });
+
+  /* ── Apparition au défilement + animation des barres ── */
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (en) {
+      if (!en.isIntersecting) return;
+      en.target.classList.add("in");
+      en.target.querySelectorAll(".sbar span").forEach(function (s) { s.style.width = s.dataset.w + "%"; });
+      io.unobserve(en.target);
+    });
+  }, { threshold: 0.12 });
+  document.querySelectorAll(".reveal").forEach(function (el) { io.observe(el); });
+
+  /* ── Lien actif dans la navigation ── */
+  var links = Array.prototype.slice.call(document.querySelectorAll('.nav-links a[href^="#"]'));
+  var spy = new IntersectionObserver(function (entries) {
+    entries.forEach(function (en) {
+      if (!en.isIntersecting) return;
+      links.forEach(function (a) { a.classList.toggle("active", a.getAttribute("href") === "#" + en.target.id); });
+    });
+  }, { rootMargin: "-45% 0px -50% 0px" });
+  document.querySelectorAll("main section[id]").forEach(function (s) { spy.observe(s); });
+})();
+</script>
+</body>
+</html>

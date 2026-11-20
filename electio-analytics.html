@@ -374,24 +374,27 @@ const LEGI_EVO = [
   {annee:2024, "Centre":41,  "Droite":12, "Extreme droite":187,"Gauche radicale":0, "Gauche":26},
 ];
 
+// Résultats du notebook 05_machineLearning (jeu « master + deltas », 154 variables).
+// Découpage aléatoire stratifié 80/20 des 266 communes des législatives 2024.
 const MODELS = [
-  {modele:"Logistic Regression", accuracy:0.587, f1:0.636, cv:0.646},
-  {modele:"Gradient Boosting",   accuracy:0.177, f1:0.071, cv:0.702},
-  {modele:"KNN",                  accuracy:0.162, f1:0.071, cv:0.628},
-  {modele:"Random Forest",        accuracy:0.158, f1:0.062, cv:0.683},
+  {modele:"Régression logistique", accuracy:0.8704, f1:0.8408, cv:0.8288},
+  {modele:"Gradient Boosting",     accuracy:0.8519, f1:0.8166, cv:0.8586},
+  {modele:"Random Forest",         accuracy:0.8333, f1:0.8007, cv:0.8502},
+  {modele:"KNN",                   accuracy:0.8333, f1:0.7961, cv:0.8328},
 ];
 
-const FEATURES = [
-  {name:"Delta taux chômage 2016→2022", score:0.19},
-  {name:"Revenu médian (Filosofi)",     score:0.17},
-  {name:"Delta abstention 2017→2022",   score:0.15},
-  {name:"Densité de population",         score:0.12},
-  {name:"Delta violences 2017→2024",    score:0.11},
-  {name:"Part population jeune",         score:0.09},
-  {name:"Delta taux d'immigration",      score:0.08},
-  {name:"Delta vols sans violence",      score:0.07},
-  {name:"Vie associative 2022",          score:0.06},
-  {name:"Cambriolages delta",            score:0.05},
+// Meilleure accuracy (régression logistique) pour chacun des 3 jeux de variables.
+const VERSIONS = [
+  {name:"Master complet (142 variables)",  score:0.8519},
+  {name:"Deltas seuls (12 variables)",     score:0.7778},
+  {name:"Master + deltas (154 variables)", score:0.8704},
+];
+
+// Projection présidentielle 2027 (notebook 05, bloc 11) : communes où la famille arrive en tête.
+const PRES_2027 = [
+  {f:"Centre",         r2022:186, p2027:189},
+  {f:"Extreme droite", r2022:66,  p2027:64},
+  {f:"Gauche",         r2022:15,  p2027:14},
 ];
 
 // ── Family colors ──────────────────────────────────────────
@@ -644,7 +647,6 @@ function Dashboard() {
     {label:"Centre",        value:41, color:"#FBBF24"},
     {label:"Gauche",        value:26, color:"#F472B6"},
     {label:"Droite",        value:12, color:"#60A5FA"},
-    {label:"Autres",        value:14, color:"#94A3B8"},
   ];
   const stackColors = {
     "Centre":"#FBBF24","Droite":"#60A5FA","Extreme droite":"#EF4444","Gauche radicale":"#A78BFA","Gauche":"#F472B6"
@@ -664,9 +666,9 @@ function Dashboard() {
           <div className="kpi-sub">2014 → 2024, tous types</div>
         </div>
         <div className="kpi-card">
-          <div className="kpi-label">Score R² modèle</div>
-          <div className="kpi-value" style={{color:"#FBBF24"}}><CountUp to={0.859} duration={1200}/></div>
-          <div className="kpi-sub">Random Forest (CV 5-fold)</div>
+          <div className="kpi-label">Accuracy du meilleur modèle</div>
+          <div className="kpi-value" style={{color:"#FBBF24"}}><CountUp to={0.870} duration={1200}/></div>
+          <div className="kpi-sub">Régression logistique, 54 communes de test</div>
         </div>
         <div className="kpi-card">
           <div className="kpi-label">Vainqueur 2024</div>
@@ -686,7 +688,7 @@ function Dashboard() {
         </div>
         <div className="card">
           <div className="card-title">Répartition 2024 — législatives T1</div>
-          <div className="card-sub">266 communes du Rhône ayant voté</div>
+          <div className="card-sub">266 communes du Rhône avec un résultat</div>
           <div style={{display:"flex",alignItems:"center",gap:20,flexWrap:"wrap",justifyContent:"center"}}>
             <DonutChart data={dist2024} size={180}/>
             <div style={{display:"flex",flexDirection:"column",gap:8}}>
@@ -705,7 +707,7 @@ function Dashboard() {
 
       <div className="card full-col">
         <div className="card-title">Participation moyenne — toutes élections</div>
-        <div className="card-sub">Taux moyen sur les 280 communes du Rhône</div>
+        <div className="card-sub">Moyenne des taux de participation des communes du Rhône</div>
         <ParticipationChart data={PARTICIPATION}/>
         <div className="legend" style={{marginTop:8}}>
           {[["pres","#4A7AFF","Présidentielle"],["legi","#FBBF24","Législatives"],["euro","#34D399","Européennes"]].map(([k,c,l])=>(
@@ -719,13 +721,14 @@ function Dashboard() {
         <div className="card-sub">Pipeline Big Data & Machine Learning — MSPR EPSI</div>
         <p style={{fontSize:13,color:"var(--fg-2)",lineHeight:1.7,maxWidth:720}}>
           Analyse de <strong style={{color:"var(--fg)"}}>8 élections</strong> (2014–2024) sur <strong style={{color:"var(--fg)"}}>280 communes</strong> du Rhône.
-          Feature engineering « delta » (différences inter-millésimes INSEE) pour capturer la dynamique territoriale.
-          Modèle Random Forest entraîné sur les législatives 2017+2022, testé sur 2024, puis projeté sur <strong style={{color:"var(--fg)"}}>2027</strong>.
+          Feature engineering « delta » (évolutions 2017 → 2022 des indicateurs socio-économiques) pour capturer la dynamique territoriale.
+          Quatre modèles de classification prédisent la famille politique en tête aux législatives 2024 (212 communes d'entraînement, 54 de test) ;
+          un second modèle projette la présidentielle <strong style={{color:"var(--fg)"}}>2027</strong>.
         </p>
         <div style={{marginTop:12}}>
           <div style={{fontSize:11,color:"var(--fg-3)",fontWeight:600,letterSpacing:.5,textTransform:"uppercase",marginBottom:6}}>Stack technique</div>
           <div className="tech-badges">
-            {["Python","pandas","scikit-learn","Random Forest","Jupyter","matplotlib","React","Recharts","Tailwind"].map(t=>(
+            {["Python","pandas","scikit-learn","SQLite","Jupyter","matplotlib","seaborn","React"].map(t=>(
               <span key={t} className="tech-badge">{t}</span>
             ))}
           </div>
@@ -954,53 +957,37 @@ function Simulateur() {
   const [revenu, setRevenu]   = React.useState(23000);
   const [chomage, setChomage] = React.useState(8);
   const [densite, setDensite] = React.useState(300);
-  const [delta, setDelta]     = React.useState(0);
+  const K = 15;
 
   const prediction = React.useMemo(() => {
-    // Rule-based predictor informed by feature importance & data patterns
-    let scores = {"Extreme droite":0,"Centre":0,"Gauche":0,"Droite":0,"Gauche radicale":0};
-    // Revenu
-    if (revenu < 19000)       scores["Extreme droite"] += 35;
-    else if (revenu < 22000)  { scores["Extreme droite"] += 20; scores["Droite"] += 10; }
-    else if (revenu < 26000)  { scores["Centre"] += 15; scores["Droite"] += 15; }
-    else if (revenu < 30000)  { scores["Centre"] += 20; scores["Gauche"] += 10; }
-    else                      { scores["Gauche"] += 25; scores["Gauche radicale"] += 10; }
-    // Chômage
-    if (chomage > 14)         scores["Gauche radicale"] += 20;
-    else if (chomage > 10)    { scores["Extreme droite"] += 15; scores["Gauche"] += 10; }
-    else if (chomage > 6)     { scores["Centre"] += 10; scores["Extreme droite"] += 8; }
-    else                      scores["Centre"] += 15;
-    // Densité
-    if (densite > 3000)       { scores["Gauche"] += 25; scores["Gauche radicale"] += 10; }
-    else if (densite > 500)   { scores["Centre"] += 15; scores["Gauche"] += 10; }
-    else if (densite > 100)   { scores["Centre"] += 10; scores["Droite"] += 10; }
-    else                      { scores["Extreme droite"] += 20; scores["Droite"] += 10; }
-    // Delta abstention (proxy for discontent)
-    if (delta > 5)            scores["Extreme droite"] += 15;
-    else if (delta > 2)       { scores["Extreme droite"] += 8; scores["Centre"] += 5; }
-    else if (delta < -3)      scores["Gauche radicale"] += 10;
-
-    const total = Object.values(scores).reduce((s,v)=>s+v,0);
-    const sorted = Object.entries(scores).sort((a,b)=>b[1]-a[1]);
-    const winner = sorted[0][0];
-    const conf = sorted[0][1]/total;
-
-    // Find similar real communes
-    const similar = COMMUNES.filter(c => c.legi2024 === winner &&
-      Math.abs((c.revenu||0)-revenu) < 3000 &&
-      Math.abs((c.chomage||0)-chomage) < 3
-    ).slice(0,4);
-
-    return {winner, conf, scores: sorted.map(([k,v])=>({k,v,pct:v/total})), similar};
-  }, [revenu, chomage, densite, delta]);
+    // Les K communes réelles les plus proches des curseurs, puis la famille
+    // arrivée en tête chez elles aux législatives 2024. Aucune règle inventée :
+    // tout vient des données des communes.
+    const pool = COMMUNES.filter(c => c.legi2024 && c.revenu > 0 && c.chomage > 0 && c.densite > 0);
+    const dist = c => Math.sqrt(
+      Math.pow((c.revenu - revenu) / 4000, 2) +
+      Math.pow((c.chomage - chomage) / 3, 2) +
+      Math.pow((Math.log10(c.densite) - Math.log10(densite)) / 0.6, 2)
+    );
+    const near = pool.map(c => ({c, d: dist(c)})).sort((a,b) => a.d - b.d).slice(0, K);
+    const counts = {};
+    near.forEach(({c}) => { counts[c.legi2024] = (counts[c.legi2024] || 0) + 1; });
+    const sorted = Object.entries(counts).sort((a,b) => b[1] - a[1]);
+    return {
+      winner: sorted[0][0],
+      n: sorted[0][1],
+      scores: sorted.map(([k,v]) => ({k, v, pct: v / K})),
+      similar: near.slice(0, 4).map(n => n.c),
+    };
+  }, [revenu, chomage, densite]);
 
   const winColor = getFamilyColor(prediction.winner);
 
   return (
     <div>
       <div className="card full-col">
-        <div className="card-title">Simulateur de prédiction — Législatives</div>
-        <div className="card-sub">Ajustez les indicateurs socio-économiques pour prédire la famille politique gagnante</div>
+        <div className="card-title">Simulateur — communes similaires</div>
+        <div className="card-sub">Ajustez les indicateurs : le simulateur retrouve les {K} communes réelles du Rhône les plus proches et montre la famille arrivée en tête chez elles aux législatives 2024. Ce n'est pas le modèle de Machine Learning, qui utilise 154 variables.</div>
         <div className="sim-grid">
           <div className="slider-block">
             <div className="slider-label">Revenu médian <span className="slider-value">{revenu.toLocaleString("fr-FR")} €</span></div>
@@ -1023,23 +1010,16 @@ function Simulateur() {
               <span>5</span><span>12 000</span>
             </div>
           </div>
-          <div className="slider-block">
-            <div className="slider-label">Delta abstention 2017→2022 <span className="slider-value">{delta > 0 ? "+":""}{delta}pts</span></div>
-            <input type="range" min="-10" max="15" step="0.5" value={delta} onChange={e=>setDelta(+e.target.value)}/>
-            <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:"var(--fg-3)"}}>
-              <span>-10 pts</span><span>+15 pts</span>
-            </div>
-          </div>
         </div>
 
         <div className="prediction-box">
           <div>
-            <div style={{fontSize:11,color:"var(--fg-3)",fontWeight:600,letterSpacing:.5,textTransform:"uppercase",marginBottom:4}}>Famille prédite</div>
+            <div style={{fontSize:11,color:"var(--fg-3)",fontWeight:600,letterSpacing:.5,textTransform:"uppercase",marginBottom:4}}>Famille la plus fréquente</div>
             <div className="pred-family" style={{color:winColor}}>{prediction.winner}</div>
-            <div className="pred-conf">{Math.round(prediction.conf*100)}% de confiance</div>
+            <div className="pred-conf">en tête dans {prediction.n} des {K} communes les plus proches</div>
           </div>
           <div className="conf-bar-wrap">
-            <div style={{fontSize:11,color:"var(--fg-3)",fontWeight:600,letterSpacing:.5,textTransform:"uppercase",marginBottom:8}}>Scores par famille</div>
+            <div style={{fontSize:11,color:"var(--fg-3)",fontWeight:600,letterSpacing:.5,textTransform:"uppercase",marginBottom:8}}>Répartition des {K} communes proches</div>
             {prediction.scores.slice(0,5).map(({k,pct})=>(
               <div key={k} style={{marginBottom:6}}>
                 <div style={{display:"flex",justifyContent:"space-between",fontSize:11,marginBottom:2}}>
@@ -1057,8 +1037,8 @@ function Simulateur() {
 
       {prediction.similar.length > 0 && (
         <div className="card">
-          <div className="card-title">Communes réelles similaires</div>
-          <div className="card-sub">Communes du Rhône avec des indicateurs proches ayant voté {prediction.winner}</div>
+          <div className="card-title">Les 4 communes les plus proches</div>
+          <div className="card-sub">Communes réelles du Rhône aux indicateurs les plus proches des curseurs, et leur résultat aux législatives 2024</div>
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:10,marginTop:12}}>
             {prediction.similar.map(c=>(
               <div key={c.code} style={{background:"var(--bg-surf)",border:"1px solid var(--border)",borderRadius:8,padding:"12px 14px"}}>
@@ -1069,6 +1049,7 @@ function Simulateur() {
                   <div>Chôm: {c.chomage > 0 ? c.chomage+"%" : "—"}</div>
                   <div>Densité: {c.densite > 0 ? c.densite+" /km²" : "—"}</div>
                 </div>
+                <div style={{marginTop:8}}><FamilyPill family={c.legi2024}/></div>
               </div>
             ))}
           </div>
@@ -1082,119 +1063,85 @@ function Simulateur() {
 // PAGE: PROJECTIONS 2027
 // ══════════════════════════════════════════════════════════
 function Projections() {
-  const proj = React.useMemo(() => {
-    return COMMUNES.map(c => {
-      let p2027 = c.legi2024;
-      // Simple trend: XD consolidated, Gauche momentum continues
-      if (c.legi2022 !== "Extreme droite" && c.legi2024 === "Extreme droite") p2027 = "Extreme droite";
-      else if (c.legi2024 === "Gauche") p2027 = "Gauche";
-      return {...c, proj2027: p2027};
-    });
-  }, []);
-
-  const dist2024 = {};
-  const dist2027 = {};
-  proj.forEach(c => {
-    if (c.legi2024) dist2024[c.legi2024] = (dist2024[c.legi2024]||0)+1;
-    if (c.proj2027) dist2027[c.proj2027] = (dist2027[c.proj2027]||0)+1;
-  });
-
-  const families = ["Extreme droite","Centre","Gauche","Gauche radicale","Droite","Ecologie","Divers"];
-  const flips = proj.filter(c => c.legi2024 !== c.proj2027);
-
+  const top = COMMUNES.slice(0, 10);
+  const TOTAL = 267;
   return (
     <div>
       <div className="card full-col" style={{background:"var(--bg-surf)",border:"1px solid #FBBF2440"}}>
         <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
           <span style={{fontSize:18}}>⚠️</span>
           <div style={{fontSize:13,color:"var(--fg-2)"}}>
-            <strong style={{color:"var(--warn)"}}>Projections indicatives</strong> — Basées sur une analyse de tendance 2017→2022→2024.
-            Le modèle Random Forest (R²=0.859) est entraîné sur les législatives ; les projections 2027 sont des extrapolations.
+            <strong style={{color:"var(--warn)"}}>Projection indicative — présidentielle 2027.</strong> Elle vient d'un modèle entraîné sur la présidentielle 2022
+            (accuracy 0.889 sur 54 communes de test). Elle prolonge les données socio-économiques 2017–2022 et les derniers signaux électoraux ;
+            elle ne tient compte ni des candidats ni de la campagne.
           </div>
         </div>
       </div>
 
       <div className="two-col">
         <div className="card">
-          <div className="card-title">Comparaison 2024 vs 2027 projeté</div>
-          <div className="card-sub">Distribution des communes du Rhône</div>
+          <div className="card-title">Présidentielle : 2022 réel vs 2027 projeté</div>
+          <div className="card-sub">Nombre de communes où la famille arrive en tête ({TOTAL} communes)</div>
           <div style={{display:"flex",flexDirection:"column",gap:10,marginTop:12}}>
-            {families.filter(f=>dist2024[f]||dist2027[f]).map(f=>(
-              <div key={f}>
+            {PRES_2027.map(d=>(
+              <div key={d.f}>
                 <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4}}>
-                  <FamilyPill family={f}/>
+                  <FamilyPill family={d.f}/>
                 </div>
                 <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                  <span style={{fontSize:11,color:"var(--fg-3)",width:50}}>2024</span>
+                  <span style={{fontSize:11,color:"var(--fg-3)",width:50}}>2022</span>
                   <div style={{flex:1,background:"var(--bg-surf)",borderRadius:3,height:6,overflow:"hidden"}}>
-                    <AnimatedBar pct={((dist2024[f]||0)/280)*100} color={getFamilyColor(f)} delay={0}/>
+                    <AnimatedBar pct={(d.r2022/TOTAL)*100} color={getFamilyColor(d.f)} delay={0}/>
                   </div>
-                  <span style={{fontSize:12,fontWeight:600,width:30,textAlign:"right",fontVariantNumeric:"tabular-nums"}}>{dist2024[f]||0}</span>
+                  <span style={{fontSize:12,fontWeight:600,width:30,textAlign:"right",fontVariantNumeric:"tabular-nums"}}>{d.r2022}</span>
                 </div>
                 <div style={{display:"flex",gap:6,alignItems:"center",marginTop:3}}>
                   <span style={{fontSize:11,color:"var(--fg-3)",width:50}}>2027</span>
                   <div style={{flex:1,background:"var(--bg-surf)",borderRadius:3,height:6,overflow:"hidden"}}>
-                    <AnimatedBar pct={((dist2027[f]||0)/280)*100} color={getFamilyColor(f)+"99"} delay={80}/>
+                    <AnimatedBar pct={(d.p2027/TOTAL)*100} color={getFamilyColor(d.f)+"99"} delay={80}/>
                   </div>
-                  <span style={{fontSize:12,fontWeight:600,width:30,textAlign:"right",fontVariantNumeric:"tabular-nums"}}>{dist2027[f]||0}</span>
+                  <span style={{fontSize:12,fontWeight:600,width:30,textAlign:"right",fontVariantNumeric:"tabular-nums"}}>{d.p2027}</span>
                 </div>
               </div>
             ))}
           </div>
+          <p style={{color:"var(--fg-3)",fontSize:12,marginTop:14}}>
+            Vainqueur projeté dans le Rhône : Centre (189 communes, 70,8 %). L'écart avec 2022 reste inférieur à la marge d'erreur du modèle.
+          </p>
         </div>
 
         <div className="card">
-          <div className="card-title">Basculements projetés 2024 → 2027</div>
-          <div className="card-sub">{flips.length} commune{flips.length>1?"s":""} en transition</div>
-          {flips.length === 0 ? (
-            <p style={{color:"var(--fg-3)",fontSize:13,marginTop:12}}>Aucun basculement projeté avec le scénario de tendance actuel.</p>
-          ) : (
-            <div className="table-wrap" style={{marginTop:12}}>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Commune</th>
-                    <th>2024</th>
-                    <th>2027 proj.</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {flips.slice(0,20).map(c=>(
-                    <tr key={c.code}>
-                      <td><span style={{fontWeight:500}}>{c.nom}</span></td>
-                      <td><FamilyPill family={c.legi2024}/></td>
-                      <td><FamilyPill family={c.proj2027}/></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+          <div className="card-title">Graphique du notebook</div>
+          <div className="card-sub">Sortie de 05_machineLearning.ipynb</div>
+          <a href="04_outputs/ml/ml_projection_pres_2027_final.png" target="_blank" rel="noopener"
+             style={{display:"block",background:"#fff",borderRadius:8,padding:8,marginTop:12}}>
+            <img src="04_outputs/ml/ml_projection_pres_2027_final.png" alt="Projection présidentielle 2027 : réel 2022, prédit 2027 et évolution" style={{width:"100%",display:"block"}}/>
+          </a>
         </div>
       </div>
 
       <div className="card">
         <div className="card-title">Top 10 communes — Rhône par population</div>
-        <div className="card-sub">Résultats 2022, 2024 et projection 2027</div>
+        <div className="card-sub">Résultats réels aux législatives. La projection 2027 n'est pas disponible commune par commune.</div>
         <div className="table-wrap">
           <table>
             <thead>
               <tr>
                 <th>Commune</th>
                 <th>Population</th>
+                <th>Legi 2017</th>
                 <th>Legi 2022</th>
                 <th>Legi 2024</th>
-                <th>Proj. 2027</th>
               </tr>
             </thead>
             <tbody>
-              {proj.slice(0,10).map(c=>(
+              {top.map(c=>(
                 <tr key={c.code}>
                   <td><span style={{fontWeight:500}}>{c.nom}</span></td>
                   <td className="number-cell">{c.pop > 0 ? c.pop.toLocaleString("fr-FR") : "—"}</td>
+                  <td><FamilyPill family={c.legi2017}/></td>
                   <td><FamilyPill family={c.legi2022}/></td>
                   <td><FamilyPill family={c.legi2024}/></td>
-                  <td><FamilyPill family={c.proj2027}/></td>
                 </tr>
               ))}
             </tbody>
@@ -1213,33 +1160,32 @@ function ModeleML() {
     {title:"01_raw", desc:"Données brutes"},
     {title:"02_staging", desc:"Nettoyage"},
     {title:"03_processed", desc:"Features delta"},
-    {title:"Train+Test", desc:"2017+2022 / 2024"},
-    {title:"Random Forest", desc:"R²=0.859"},
-    {title:"Projection", desc:"2027"},
+    {title:"Train / Test", desc:"212 / 54 communes"},
+    {title:"Rég. logistique", desc:"Accuracy 0.870"},
+    {title:"Projection", desc:"Présid. 2027"},
   ];
-  const bestModel = {modele:"Random Forest",r2:0.859,mae:"1.94–3.2%",cv:"0.683"};
   return (
     <div>
       <div className="kpi-grid">
         <div className="kpi-card">
           <div className="kpi-label">Meilleur modèle</div>
-          <div className="kpi-value" style={{fontSize:17,paddingTop:4,color:"var(--accent)"}}>Random Forest</div>
-          <div className="kpi-sub">Gradient Boosting, Ridge, LR testés</div>
+          <div className="kpi-value" style={{fontSize:17,paddingTop:4,color:"var(--accent)"}}>Régression logistique</div>
+          <div className="kpi-sub">Random Forest, Gradient Boosting, KNN aussi testés</div>
         </div>
         <div className="kpi-card">
-          <div className="kpi-label">Score R²</div>
-          <div className="kpi-value" style={{color:"var(--success)"}}><CountUp to={0.859} duration={1200}/></div>
-          <div className="kpi-sub">Validation croisée 5-fold</div>
+          <div className="kpi-label">Accuracy (test)</div>
+          <div className="kpi-value" style={{color:"var(--success)"}}><CountUp to={0.870} duration={1200}/></div>
+          <div className="kpi-sub">47 communes sur 54 bien classées</div>
         </div>
         <div className="kpi-card">
-          <div className="kpi-label">MAE</div>
-          <div className="kpi-value" style={{fontSize:20,paddingTop:6,color:"var(--warn)"}}>1.94–3.2%</div>
-          <div className="kpi-sub">Erreur absolue moyenne</div>
+          <div className="kpi-label">F1 pondéré</div>
+          <div className="kpi-value" style={{color:"var(--warn)"}}><CountUp to={0.841} duration={1200}/></div>
+          <div className="kpi-sub">Validation croisée : 0.829</div>
         </div>
         <div className="kpi-card">
-          <div className="kpi-label">Critère de succès</div>
-          <div className="kpi-value" style={{color:"var(--success)",fontSize:20,paddingTop:6}}>R² &gt; 0.5</div>
-          <div className="kpi-sub" style={{color:"var(--success)"}}>✓ Objectif dépassé</div>
+          <div className="kpi-label">Référence à battre</div>
+          <div className="kpi-value" style={{color:"var(--fg-2)",fontSize:20,paddingTop:6}}>70 %</div>
+          <div className="kpi-sub">en répondant toujours « Extrême droite »</div>
         </div>
       </div>
 
@@ -1262,18 +1208,18 @@ function ModeleML() {
       <div className="two-col">
         <div className="card">
           <div className="card-title">Comparaison des modèles</div>
-          <div className="card-sub">Accuracy, F1-score et score CV (5-fold)</div>
+          <div className="card-sub">Jeu « master + deltas » — accuracy et F1 sur le test, score de validation croisée</div>
           <div style={{marginTop:16}}>
             {MODELS.map(m => (
               <div key={m.modele} style={{
                 marginBottom:16,
-                background: m.modele==="Logistic Regression" ? "var(--bg-surf)" : "transparent",
-                borderRadius:7, padding: m.modele==="Logistic Regression"?10:0,
-                border: m.modele==="Logistic Regression" ? "1px solid var(--accent-lo)":"none"
+                background: m.modele==="Régression logistique" ? "var(--bg-surf)" : "transparent",
+                borderRadius:7, padding: m.modele==="Régression logistique"?10:0,
+                border: m.modele==="Régression logistique" ? "1px solid var(--accent-lo)":"none"
               }}>
                 <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
                   <span style={{fontWeight:600,fontSize:13}}>{m.modele}</span>
-                  {m.modele==="Logistic Regression" && <span className="badge badge-blue">Meilleur test</span>}
+                  {m.modele==="Régression logistique" && <span className="badge badge-blue">Meilleur test</span>}
                 </div>
                 <HBarChart data={[
                   {label:"Accuracy",  value:m.accuracy,  color:"#4A7AFF"},
@@ -1284,24 +1230,24 @@ function ModeleML() {
             ))}
           </div>
           <div style={{marginTop:12,padding:"10px 12px",background:"var(--bg-surf)",borderRadius:7,fontSize:12,color:"var(--fg-2)"}}>
-            <strong style={{color:"var(--warn)"}}>Note méthodologique :</strong> Le Random Forest a le meilleur score CV (0.683) mais une accuracy basse sur le test 2024 en raison de la dissolution exceptionnelle. La Logistic Regression est plus robuste hors-distribution.
+            <strong style={{color:"var(--warn)"}}>Note méthodologique :</strong> entraînement et test sont tirés au hasard (80/20, stratifié) parmi les 266 communes des législatives 2024 : le test ne mesure pas la capacité à prédire une élection future. Les classes sont très déséquilibrées (187 communes « Extrême droite » sur 266) et aucun modèle ne reconnaît les 3 communes « Droite » du test.
           </div>
         </div>
 
         <div className="card">
-          <div className="card-title">Importance des features</div>
-          <div className="card-sub">Score d'importance relatif (estimé)</div>
+          <div className="card-title">Apport des deltas</div>
+          <div className="card-sub">Accuracy de la régression logistique selon le jeu de variables</div>
           <div style={{marginTop:12}}>
-            {FEATURES.map(f=>(
-              <div className="prog-row" key={f.name}>
-                <span className="prog-label" style={{fontSize:11,width:200}}>{f.name}</span>
-                <div className="prog-bar-bg">
-                  <AnimatedBar pct={f.score*100/0.19*100} color="var(--accent)" delay={0}/>
-                </div>
-                <span className="prog-val">{Math.round(f.score*100)}%</span>
-              </div>
-            ))}
+            <HBarChart data={VERSIONS} labelKey="name" valueKey="score" color="var(--accent)" maxVal={1}/>
           </div>
+          <p style={{fontSize:12,color:"var(--fg-2)",marginTop:12,lineHeight:1.6}}>
+            Les deltas seuls ne suffisent pas, mais ajoutés aux variables de base ils améliorent trois des quatre modèles.
+          </p>
+          <div className="card-sub" style={{marginTop:16}}>Importance des variables — sortie du notebook</div>
+          <a href="04_outputs/ml/ml_feature_importance.png" target="_blank" rel="noopener"
+             style={{display:"block",background:"#fff",borderRadius:8,padding:8,marginTop:8}}>
+            <img src="04_outputs/ml/ml_feature_importance.png" alt="Importance des variables selon les modèles" style={{width:"100%",display:"block"}}/>
+          </a>
         </div>
       </div>
 
@@ -1309,19 +1255,17 @@ function ModeleML() {
         <div className="card-title">Approche delta — Feature Engineering</div>
         <div className="card-sub">La clé méthodologique du projet</div>
         <p style={{fontSize:13,color:"var(--fg-2)",lineHeight:1.7,marginBottom:16,maxWidth:720}}>
-          Plutôt que d'utiliser des données socio-économiques figées, le projet calcule des <strong style={{color:"var(--fg)"}}>indicateurs delta</strong> (Année2 − Année1)
-          pour capturer la <em>dynamique</em> d'évolution des territoires — toujours entre deux millésimes de la même source pour éviter les incohérences méthodologiques.
+          Plutôt que d'utiliser uniquement des données socio-économiques figées, le projet calcule des <strong style={{color:"var(--fg)"}}>indicateurs delta</strong> (évolution entre les millésimes 2017 et 2022)
+          pour capturer la <em>dynamique</em> des territoires — toujours entre deux millésimes de la même source. Douze variables en sont tirées, sur six indicateurs :
         </p>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",gap:10}}>
           {[
-            {label:"Δ Chômage",desc:"2016 → 2022 (INSEE)"},
-            {label:"Δ Revenus",desc:"2017 → 2020 (Filosofi)"},
-            {label:"Δ Abstention",desc:"2017 → 2022"},
-            {label:"Δ Délinquance",desc:"2016 → 2021 (SSMSI)"},
-            {label:"Δ Vie assoc.",desc:"2019 → 2022 (RNA)"},
-            {label:"Δ Jeunesse",desc:"2016 → 2022 (INSEE)"},
-            {label:"Δ Immigration",desc:"2016 → 2022 (INSEE)"},
-            {label:"Δ Violences",desc:"2017 → 2024 (SSMSI)"},
+            {label:"Δ Revenu médian",desc:"INSEE Filosofi"},
+            {label:"Δ Population",desc:"INSEE Recensement"},
+            {label:"Δ Densité",desc:"INSEE Recensement"},
+            {label:"Δ Logements",desc:"INSEE Recensement"},
+            {label:"Δ Immigration",desc:"INSEE Recensement"},
+            {label:"Δ Délinquance",desc:"SSMSI — total des délits"},
           ].map(d=>(
             <div key={d.label} style={{background:"var(--bg-surf)",border:"1px solid var(--border)",borderRadius:7,padding:"10px 12px"}}>
               <div style={{fontWeight:600,color:"var(--accent)",fontSize:13}}>{d.label}</div>
@@ -1425,7 +1369,7 @@ function App() {
             <span className="topbar-title">{PAGE_TITLES[page]}</span>
           </div>
           <div style={{display:"flex",gap:8,alignItems:"center"}}>
-            <span className="badge badge-green">R² = 0.859</span>
+            <span className="badge badge-green">Accuracy 87 %</span>
             <span className="badge badge-blue">280 communes</span>
           </div>
         </div>

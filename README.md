@@ -1,22 +1,53 @@
 # MSPR Electio-Analytics
 
-Pipeline Big Data & Machine Learning pour la prédiction des résultats des élections législatives françaises à travers l'analyse socio-économique des communes.
+Pipeline de données et modèles de Machine Learning pour prédire la famille politique arrivée en tête dans les communes du Rhône, à partir des résultats électoraux et d'indicateurs socio-économiques.
 
-**Établissement :** EPSI — Projet MSPR (Mission Système Professionnalisant)
-**Périmètre géographique :** Département du Rhône (69) — ~266 à 280 communes
-**Élections couvertes :** Législatives 2017, 2022, 2024
+**Établissement :** EPSI — Projet MSPR (Mise en Situation Professionnelle Reconstituée)
+**Périmètre géographique :** Département du Rhône (69) — 280 communes, 1,9 million d'habitants
+**Scrutins collectés :** 8 premiers tours, de 2014 à 2024 (européennes 2014, 2019, 2024 ; présidentielles 2017, 2022 ; législatives 2017, 2022, 2024)
+
+**Site de présentation :** ouvrir `index.html` · **Application interactive :** `electio-analytics.html`
 
 ---
 
 ## Objectif du projet
 
-Construire un modèle de Machine Learning capable de **prédire le vainqueur des élections législatives 2027** dans le Rhône, en s'appuyant sur l'évolution d'indicateurs socio-économiques (chômage, revenus, pauvreté, délinquance, vie associative, immigration, abstention, etc.) entre plusieurs millésimes.
+Prédire, pour chaque commune, la **famille politique en tête au premier tour** (Centre, Droite, Extrême droite ou Gauche), puis proposer une **projection indicative pour la présidentielle 2027**.
 
-- **Entraînement :** données législatives 2017 et 2022
-- **Test :** données législatives 2024
-- **Cible :** projection 2027
-- **Critère de succès :** R² > 0.5
-- **Résultat actuel :** Random Forest, **R² = 0.859** (validation croisée), MAE ≈ 1.94–3.2 %
+C'est un problème de **classification** : le modèle désigne un vainqueur par commune, il ne prédit pas les scores.
+
+## Résultats
+
+Résultats du notebook `scripts/05_machineLearning.ipynb`, sur les 266 communes des législatives 2024 (212 pour l'entraînement, 54 pour le test, découpage aléatoire stratifié 80/20).
+
+Jeu de variables « master + deltas » (154 variables) :
+
+| Modèle | Accuracy | F1 pondéré | Validation croisée |
+|---|---|---|---|
+| **Régression logistique** | **0,870** | **0,841** | 0,829 |
+| Gradient Boosting | 0,852 | 0,817 | 0,859 |
+| Random Forest | 0,833 | 0,801 | 0,850 |
+| KNN | 0,833 | 0,796 | 0,833 |
+
+Référence à battre : 70 % d'accuracy en répondant toujours « Extrême droite » (187 communes sur 266 en 2024).
+
+Meilleure accuracy selon le jeu de variables (régression logistique) :
+
+| Jeu de variables | Nombre de variables | Accuracy |
+|---|---|---|
+| Master complet | 142 | 0,852 |
+| Deltas seuls | 12 | 0,778 |
+| Master + deltas | 154 | 0,870 |
+
+**Projection présidentielle 2027** (modèle entraîné sur la présidentielle 2022, accuracy 0,889 en test) : Centre en tête dans 189 communes, Extrême droite dans 64, Gauche dans 14.
+
+### Limites
+
+- **Classes déséquilibrées :** aucune des 3 communes « Droite » du jeu de test n'est reconnue, quel que soit le modèle.
+- **Jeu de test réduit :** 54 communes, soit près de 2 points d'accuracy par erreur.
+- **Test dans la même élection :** entraînement et test sont tirés au hasard dans le scrutin de 2024. Ce score ne mesure pas la capacité à prédire une élection future ; `03_processed/bilan_modeles.csv` conserve un autre essai, moins favorable (0,587 pour la régression logistique).
+- **Notebook `07_projection_1à3ans.ipynb` :** le rééquilibrage SMOTE y est appliqué avant la séparation entraînement/test, ce qui surestime les scores (0,97), et la projection obtenue classe toutes les communes en « Extrême droite ». Ces résultats ne sont pas retenus.
+- **La projection 2027 est indicative :** elle prolonge les données 2017–2022 sans tenir compte des candidats ni de la campagne.
 
 ---
 
@@ -36,11 +67,15 @@ Projet réalisé en groupe de 4, avec les rôles suivants :
 ## Architecture du pipeline de données
 
 ```
-01_raw/          → Données brutes issues des sources officielles
-02_staging/      → Données nettoyées et standardisées
-03_processed/    → Features engineerées (dont les indicateurs delta)
-04_output/       → Résultats, modèles entraînés, prédictions
+01_raw/          → Données brutes issues des sources officielles (non versionnées)
+02_staging/      → Données filtrées sur le Rhône, nettoyées et agrégées par commune
+03_processed/    → Jeu final master_ml.csv (1 360 lignes × 40 colonnes)
+04_outputs/      → Modèles entraînés et graphiques (eda, etl, electoral, ml)
+scripts/         → Notebooks 00 à 07, dashboard Streamlit, diagrammes PlantUML
+pipeline.py      → Pipeline ETL complet
 ```
+
+Le pipeline suit deux branches, électorale et socio-économique, qui se rejoignent dans le master : filtrage sur le département 69, mapping des nuances vers les familles politiques, agrégation des bureaux de vote vers les communes, imputation des valeurs manquantes par la médiane, puis jointure. Le diagramme complet est dans `out/scripts/flux_ETL/flux_ETL.png`.
 
 ---
 
@@ -48,94 +83,49 @@ Projet réalisé en groupe de 4, avec les rôles suivants :
 
 | Source | Données |
 |---|---|
-| INSEE | Emploi/chômage, démographie, immigration, Filosofi (revenus/pauvreté) |
-| Ministère de l'Intérieur | Résultats électoraux |
-| SSMSI | Délinquance et criminalité |
-| RNA Waldec | Vie associative |
-| data.gouv.fr | Fichiers communaux (format parquet) |
+| Ministère de l'Intérieur | Résultats électoraux par bureau de vote |
+| INSEE — Recensement | Population, logements, emploi et chômage, immigration |
+| INSEE — Filosofi | Revenu médian, pauvreté, déciles de revenu |
+| SSMSI | Délinquance enregistrée par commune |
 
-**Formats rencontrés :** CSV (séparateur `;`, encodage latin1), XLS, Parquet
-
----
-
-## Approche "Delta" (feature engineering)
-
-Plutôt que d'utiliser des données socio-économiques figées à un instant T (source de biais temporel identifiée par le corps enseignant), le projet calcule des **indicateurs delta** (Année2 − Année1) pour capturer la dynamique d'évolution des territoires.
-
-**Principe :** toujours comparer deux millésimes issus de la **même source** de données pour éviter les incohérences méthodologiques.
-
-### Indicateurs delta produits
-
-| Fichier | Indicateur | Période |
-|---|---|---|
-| `delta_chomage_2016_2022.csv` | Taux de chômage (INSEE) | 2016–2022 |
-| `delta_filosofi_2017_2020.csv` | Revenu médian et pauvreté | 2017–2020 |
-| `delta_abstention_2017_2022.csv` | Abstention (agrégée bureau → commune) | 2017–2022 |
-| `delta_ssmsi_2016_2021.csv` | 4 indicateurs de délinquance | 2016–2021 |
-| `delta_vie_associative_2019_2022.csv` | Vie associative (RNA Waldec) | 2019–2022 |
-| `delta_taux_jeunes_2016_2022.csv` | Part de la population jeune | 2016–2022 |
-| `delta_immigration_2016_2022.csv` | Taux d'immigration | 2016–2022 |
-| `delta_violences_2017_2024.csv` | Violences physiques hors cadre familial | 2017–2024 |
-
-Les fichiers socio-économiques 2021 d'origine sont conservés tels quels ; les fichiers delta viennent s'y ajouter de manière additive.
-
-### Indicateurs SSMSI retenus
-Sur l'ensemble des indicateurs disponibles, 4 ont été jugés les plus pertinents électoralement :
-violences hors cadre familial, vols sans violence, cambriolages, dégradations/vandalisme.
+**Formats rencontrés :** CSV, Excel
 
 ---
 
-## Modélisation Machine Learning
+## Approche « delta » (feature engineering)
 
-- **Modèles testés :** Random Forest, Gradient Boosting, Ridge, régression linéaire
-- **Meilleur modèle :** Random Forest
-  - R² = 0.859 (validation croisée 5-fold)
-  - MAE ≈ 1.94–3.2 %
-- **Split temporel :** entraînement sur 2017 + 2022, test sur 2024
-- **Centrage :** technique appliquée pour retirer le biais temporel introduit par l'événement exceptionnel de la dissolution de 2024
+En complément des indicateurs à une date donnée, le projet calcule des **indicateurs delta** : l'évolution d'un indicateur entre les millésimes 2017 et 2022, pour capter la dynamique des territoires.
+
+**Principe :** toujours comparer deux millésimes issus de la **même source**.
+
+Douze variables delta sont produites dans `05_machineLearning.ipynb`, à partir de six indicateurs :
+
+| Indicateur | Source |
+|---|---|
+| Revenu médian | INSEE Filosofi |
+| Population | INSEE Recensement |
+| Densité | INSEE Recensement |
+| Nombre de logements | INSEE Recensement |
+| Nombre d'immigrés | INSEE Recensement |
+| Total des délits | SSMSI |
+
+Seuls, les deltas donnent de moins bons résultats que les variables de base ; ajoutés à celles-ci, ils améliorent trois des quatre modèles.
 
 ---
 
 ## Points de vigilance méthodologiques
 
-- **Secret statistique INSEE** (codes `s`) : valeurs imputées à partir des colonnes `complement_info` ; 266/280 communes conservées après nettoyage
-- **RNA Waldec :** les fichiers historiques n'étant pas disponibles, les snapshots 2019 et 2022 ont été reconstruits à partir du fichier de décembre 2022
-- **Toujours utiliser `.copy()`** lors de la création de DataFrames pandas, pour éviter les bugs d'écrasement accidentel (un bug de delta=0 a été causé par l'écrasement de `df_2017`)
+- **Secret statistique INSEE :** certaines petites communes n'ont pas de valeur publiée ; 266 communes sur 280 sont conservées pour la modélisation.
+- **Fusions de communes :** le nombre de communes passe de 280 (2017) à 266–267 (2022, 2024).
+- **Toujours utiliser `.copy()`** lors de la création de DataFrames pandas, pour éviter les écrasements accidentels.
 
 ---
 
 ## Stack technique
 
 - **Langage :** Python
-- **Traitement de données :** pandas, pyarrow
-- **Machine Learning :** scikit-learn (Random Forest, Gradient Boosting, Ridge, régression linéaire)
-- **Visualisation :** matplotlib
+- **Traitement de données :** pandas, SQLite
+- **Machine Learning :** scikit-learn (régression logistique, Random Forest, Gradient Boosting, KNN), imbalanced-learn
+- **Visualisation :** matplotlib, seaborn, Streamlit (`scripts/06_dashboard.py`)
 - **Environnement :** Jupyter Notebooks
-
----
-
-## Prochaines étapes
-
-- Poursuivre le calcul des indicateurs delta manquants
-- Intégrer l'ensemble des features delta finalisées dans le pipeline ML
-- Développer la mini-application web **Electio-Analytics** (React, Recharts, Tailwind CSS) avec 6 pages :
-  1. Dashboard
-  2. Recherche par commune
-  3. Simulateur de prédiction
-  4. Visualisations
-  5. Projections 2027
-  6. Résultats du modèle ML
-
-*(spécifications détaillées disponibles dans `electio_analytics_specifications.md`)*
-
----
-
-## Dossier de travail
-
-Un dossier `TestFacteur/` est utilisé comme bac à sable pour expérimenter avant intégration dans le pipeline principal.
-
----
-
-## Notes
-
-Ce README a été généré à partir de l'état du projet et pourra être complété au fur et à mesure de son avancement (instructions d'installation, arborescence détaillée des dossiers, exemples d'utilisation des notebooks, etc.).
+- **Web :** site de présentation en HTML/CSS/JS, application interactive en React
